@@ -1,0 +1,49 @@
+SearchCriteria identitySystemSearchCriteria = new SearchCriteria();
+identitySystemSearchCriteria.getFilterCriteria().add(new Criteria("intStatus", '0'));
+identitySystemSearchCriteria.getFilterCriteria().add(new Criteria("system.extId", '=', 'SYS-000030'));
+identitySystemSearchCriteria.getProjectionList().add("id");
+identitySystemSearchCriteria.getProjectionList().add("identityId");
+identitySystemSearchCriteria.getProjectionList().add("systemId");
+identitySystemSearchCriteria.setApplyProjectionToQuery(true);
+identitySystemSearchCriteria.setUnpaged(true);
+List identitySystemList = mvelHelper.findEntity(requestDetails, "IdentitySystem", identitySystemSearchCriteria);
+List identityIdInSystem = new ArrayList();
+Long systemId = identitySystemList.get(0).systemId;
+log.info("SystemId for System Code SYS-000042: {}", systemId);
+if (identitySystemList != null) {
+    for (idnSys: identitySystemList) {
+        identityIdInSystem.add(idnSys.identityId);
+    }
+}
+log.info("identityIdInSystem before removing owner: " + identityIdInSystem.size());
+SearchCriteria systemOwnerSearchCriteria = new SearchCriteria();
+systemOwnerSearchCriteria.getFilterCriteria().add(new Criteria("intStatus", "=", "0"));
+systemOwnerSearchCriteria.getFilterCriteria().add(new Criteria('systemId', '=', systemId));
+systemOwnerSearchCriteria.getProjectionList().add("ownerId");
+systemOwnerSearchCriteria.setApplyProjectionToQuery(true);
+systemOwnerSearchCriteria.setUnpaged(true);
+List systemOwnerList = mvelHelper.findEntity(requestDetails, "SystemOwner", systemOwnerSearchCriteria);
+if (systemOwnerList != null) {
+    for (sysOwner: systemOwnerList) {
+        if (sysOwner.getOwnerId() != null) {
+            if (identityIdInSystem.contains(sysOwner.getOwnerId())) {
+                identityIdInSystem.remove(sysOwner.getOwnerId());
+            }
+        }
+    }
+}
+log.info("identityIdInSystem after removing owner: " + identityIdInSystem.size());
+SearchCriteria identityAccessSearchCriteria = new SearchCriteria();
+identityAccessSearchCriteria.getFilterCriteria().add(new Criteria("intStatus", "=", "0"));
+identityAccessSearchCriteria.getFilterCriteria().add(new Criteria("identityId", "in", identityIdInSystem));
+identityAccessSearchCriteria.getFilterCriteria().add(new Criteria("access.systemId", "=", systemId));
+identityAccessSearchCriteria.getProjectionList().add("identityId");
+identityAccessSearchCriteria.getProjectionList().add("accessId");
+identityAccessSearchCriteria.getProjectionList().add("validFrom");
+identityAccessSearchCriteria.getProjectionList().add("validTo");
+identityAccessSearchCriteria.getProjectionList().add("personSystemId");
+identityAccessSearchCriteria.setApplyProjectionToQuery(true);
+identityAccessSearchCriteria.setUnpaged(true);
+List identityAccessList = mvelHelper.findEntity(requestDetails, "IdentityAccess", identityAccessSearchCriteria);
+log.info("identityAccessList size : " + identityAccessList.size());
+return identityAccessList;
